@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:news/api/Api_Manegar.dart';
-import 'package:news/api/model/sources_response/SourcesResponse.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:news/ui/article/Article_Screen.dart';
+import 'package:news/ui/news/News_Screen_Viewmodel.dart';
 
 class NewsScreen extends StatefulWidget {
   static const String routeName = 'news';
@@ -19,9 +18,11 @@ class _NewsScreenState extends State<NewsScreen> {
   bool isSearch = false;
   var searchController = TextEditingController();
   int? page = 1;
+  var viewModel = NewsScreenViewmodel();
 
   @override
   Widget build(BuildContext context) {
+    viewModel.loadNewsSource(widget.category!);
     return Container(
       decoration: BoxDecoration(
           color: Colors.white,
@@ -94,65 +95,30 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         body: Container(
           padding: EdgeInsets.symmetric(vertical: 20),
-          child: FutureBuilder<SourcesResponse>(
-            future: ApiManegar.getNewsSources(widget.category ?? ""),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          child: BlocBuilder<NewsScreenViewmodel, NewsScreenState>(
+            bloc: viewModel,
+            builder: (context, state) {
+              if (state is LoadingState) {
                 return Center(
                   child: CircularProgressIndicator(),
                 );
-              }
-              if (snapshot.hasError) {
+              } else if (state is ErrorState) {
                 return Center(
                   child: Column(
                     children: [
-                      Text(snapshot.error.toString()),
+                      Text(state.errorMessage ?? ""),
                       ElevatedButton(onPressed: () {}, child: Text('Try again'))
                     ],
                   ),
                 );
-              }
-              var response = snapshot.data;
-              if (response?.status == 'error') {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: Column(
-                      spacing: 40,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          response?.message ?? "",
-                          style: GoogleFonts.poppins(
-                              textStyle: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 14,
-                                  color: Color(0xff42505C))),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {},
-                          child: Text(
-                            'Try again',
-                            style: GoogleFonts.poppins(
-                                textStyle: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 14,
-                                    color: Colors.white)),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xff39A552),
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
+              } else if (state is SuccessState) {
+                return ArticleScreen(
+                  page: page,
+                  query: searchController.text,
+                  sources: state.sources,
                 );
               }
-              return ArticleScreen(
-                page: page,
-                query: searchController.text,
-                sources: response?.sources,
-              );
+              return Container();
             },
           ),
         ),
@@ -160,6 +126,68 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 }
+
+// FutureBuilder<SourcesResponse>(
+// future: ApiManegar.getNewsSources(widget.category ?? ""),
+// builder: (context, snapshot) {
+// if (snapshot.connectionState == ConnectionState.waiting) {
+// return Center(
+// child: CircularProgressIndicator(),
+// );
+// }
+// if (snapshot.hasError) {
+// return Center(
+// child: Column(
+// children: [
+// Text(snapshot.error.toString()),
+// ElevatedButton(onPressed: () {}, child: Text('Try again'))
+// ],
+// ),
+// );
+// }
+// var response = snapshot.data;
+// if (response?.status == 'error') {
+// return Center(
+// child: Padding(
+// padding: const EdgeInsets.symmetric(horizontal: 30),
+// child: Column(
+// spacing: 40,
+// mainAxisAlignment: MainAxisAlignment.center,
+// children: [
+// Text(
+// response?.message ?? "",
+// style: GoogleFonts.poppins(
+// textStyle: TextStyle(
+// fontWeight: FontWeight.w500,
+// fontSize: 14,
+// color: Color(0xff42505C))),
+// ),
+// ElevatedButton(
+// onPressed: () {},
+// child: Text(
+// 'Try again',
+// style: GoogleFonts.poppins(
+// textStyle: TextStyle(
+// fontWeight: FontWeight.w500,
+// fontSize: 14,
+// color: Colors.white)),
+// ),
+// style: ElevatedButton.styleFrom(
+// backgroundColor: Color(0xff39A552),
+// ),
+// )
+// ],
+// ),
+// ),
+// );
+// }
+// return ArticleScreen(
+// page: page,
+// query: searchController.text,
+// sources: response?.sources,
+// );
+// },
+// ),
 
 // class NewsSearchDelegate extends SearchDelegate{
 //   @override

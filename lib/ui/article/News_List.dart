@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:news/api/Api_Manegar.dart';
-import 'package:news/api/model/news_response/NewsResponse.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:news/api/model/sources_response/Source.dart';
+import 'package:news/ui/article/News_List_Viewmodel.dart';
 import 'package:news/ui/content/Content_Screen.dart';
 import 'package:news/ui/widget/News_Widget.dart';
 
@@ -36,63 +36,112 @@ class _NewsListState extends State<NewsList> {
     );
   }
 
+  var viewModel = NewsListViewmodel();
+
   @override
   Widget build(BuildContext context) {
+    viewModel.loadNews(
+      q: widget.query,
+      page: widget.page,
+      sourceId: widget.source?.id,
+    );
+
     return Container(
-      child: FutureBuilder<NewsResponse>(
-        future: ApiManegar.getNews(
-            source: widget.source?.id ?? "",
-            q: widget.query,
-            page: widget.page),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      child: BlocBuilder<NewsListViewmodel, NewsListState>(
+        bloc: viewModel,
+        builder: (context, state) {
+          if (state is LoadingState) {
             return Center(
               child: CircularProgressIndicator(color: Color(0xff39A552)),
             );
-          }
-          if (snapshot.hasError) {
+          } else if (state is ErrorState) {
             return Center(
               child: Column(
                 children: [
-                  Text(snapshot.error.toString()),
+                  Text(state.errorMessage ?? ""),
                   ElevatedButton(onPressed: () {}, child: Text('Try again'))
                 ],
               ),
             );
-          }
-          var response = snapshot.data;
-          if (response?.status == 'error') {
-            return Center(
-              child: Column(
-                children: [
-                  Text(response?.message ?? ""),
-                  ElevatedButton(onPressed: () {}, child: Text('Try again'))
-                ],
+          } else if (state is SuccessState) {
+            return ListView.separated(
+              controller: scrollController,
+              separatorBuilder: (context, index) => SizedBox(
+                height: 30,
               ),
+              itemCount: state.newsList.length ?? 0,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => ContentScreen(
+                                news: state.newsList[index],
+                              )));
+                    },
+                    child: NewsWidget(
+                      news: state.newsList[index],
+                    ));
+              },
             );
           }
-          var newsList = snapshot.data?.newsList;
-          return ListView.separated(
-            controller: scrollController,
-            separatorBuilder: (context, index) => SizedBox(
-              height: 30,
-            ),
-            itemCount: newsList?.length ?? 0,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => ContentScreen(
-                              news: newsList[index],
-                            )));
-                  },
-                  child: NewsWidget(
-                    news: newsList![index],
-                  ));
-            },
-          );
+          return Container();
         },
       ),
     );
   }
 }
+
+// FutureBuilder<NewsResponse>(
+// future: ApiManegar.getNews(
+// source: widget.source?.id ?? "",
+// q: widget.query,
+// page: widget.page),
+// builder: (context, snapshot) {
+// if (snapshot.connectionState == ConnectionState.waiting) {
+// return Center(
+// child: CircularProgressIndicator(color: Color(0xff39A552)),
+// );
+// }
+// if (snapshot.hasError) {
+// return Center(
+// child: Column(
+// children: [
+// Text(snapshot.error.toString()),
+// ElevatedButton(onPressed: () {}, child: Text('Try again'))
+// ],
+// ),
+// );
+// }
+// var response = snapshot.data;
+// if (response?.status == 'error') {
+// return Center(
+// child: Column(
+// children: [
+// Text(response?.message ?? ""),
+// ElevatedButton(onPressed: () {}, child: Text('Try again'))
+// ],
+// ),
+// );
+// }
+// var newsList = snapshot.data?.newsList;
+// return ListView.separated(
+// controller: scrollController,
+// separatorBuilder: (context, index) => SizedBox(
+// height: 30,
+// ),
+// itemCount: newsList?.length ?? 0,
+// itemBuilder: (context, index) {
+// return GestureDetector(
+// onTap: () {
+// Navigator.of(context).push(MaterialPageRoute(
+// builder: (_) => ContentScreen(
+// news: newsList[index],
+// )));
+// },
+// child: NewsWidget(
+// news: newsList![index],
+// ));
+// },
+// );
+// },
+// ),
